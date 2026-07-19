@@ -333,7 +333,7 @@ body{padding-bottom:34px;}
       <div class="section-title"><span class="bar"></span>FY Attendance Summary &mdash; All Months</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Month</th><th>Working Days</th><th>Present</th><th>Absent</th><th>Leave</th><th>Holidays</th><th>Weekly Offs</th><th>Hours Worked</th><th>Required Hrs</th><th>Excess/Deficit</th></tr></thead>
+          <thead><tr><th>Month</th><th>Working Days</th><th>Present</th><th>Absent</th><th>Leave</th><th>Holidays</th><th>Weekly Offs</th><th>Hours Worked</th><th>Required Hrs</th><th>Excess/Deficit</th><th>Grace-Adj. Excess/Deficit</th></tr></thead>
           <tbody id="fyTableBody"></tbody>
         </table>
       </div>
@@ -510,6 +510,7 @@ function renderKpis(d){
   html += kpiCard("Attendance % (" + (k.currentMonth||"") + ")", (k.attendancePercent||0) + "<small>%</small>", "accent", "attendance");
   html += kpiCard("Excess/Deficit Hrs (Month)", signedHrs(k.excessHours), k.excessHours>=0?"pos":"neg", "attendance");
   html += kpiCard("Overall Excess/Deficit Hrs", signedHrs(fy.excessHrs), fy.excessHrs>=0?"pos":"neg", "attendance");
+  html += kpiCard("Overall Grace-Adj. Excess/Deficit", signedHrs(fy.graceAdjustedExcessHrs), fy.graceAdjustedExcessHrs>=0?"pos":"neg", "attendance");
   html += kpiCard("Mandate Items On Track", (k.mandateOnTrack||0) + "<small>/" + (k.totalMandates||0) + "</small>", "", "workbreakup");
   var periodCount = new Set((d.tasksLog||[]).map(function(t){ return t.sourceReport; })).size;
   html += kpiCard("Tasks Logged (" + periodCount + " periods)", k.totalTasksLogged||0, "", "tasks");
@@ -535,7 +536,7 @@ function renderFyTable(d){
     var s = a.summary;
     rows += "<tr><td><b>" + m + "</b></td><td>" + s.workingDays + "</td><td>" + s.present + "</td><td>" + s.absent +
       "</td><td>" + s.leaves + "</td><td>" + s.holidays + "</td><td>" + s.weeklyOffs + "</td><td>" + fmtHrs(s.totalHrs) +
-      "</td><td>" + s.requiredHrs + "</td><td>" + signedHrs(s.excessHrs) + "</td></tr>";
+      "</td><td>" + s.requiredHrs + "</td><td>" + signedHrs(s.excessHrs) + "</td><td>" + signedHrs(s.graceAdjustedExcessHrs) + "</td></tr>";
   });
   document.getElementById("fyTableBody").innerHTML = rows;
 }
@@ -627,8 +628,10 @@ function renderAttendance(d){
   kpis += kpiCard("Weekly Offs", s.weeklyOffs);
   kpis += kpiCard("Hours Worked", fmtHrs(s.totalHrs));
   kpis += kpiCard("Excess/Deficit", signedHrs(s.excessHrs), s.excessHrs>=0?"pos":"neg");
+  kpis += kpiCard("Grace-Adj. Excess/Deficit", signedHrs(s.graceAdjustedExcessHrs), s.graceAdjustedExcessHrs>=0?"pos":"neg");
   var fy = d.fySummary || {};
   kpis += kpiCard("Overall Excess/Deficit", signedHrs(fy.excessHrs), fy.excessHrs>=0?"pos":"neg");
+  kpis += kpiCard("Overall Grace-Adj. Excess/Deficit", signedHrs(fy.graceAdjustedExcessHrs), fy.graceAdjustedExcessHrs>=0?"pos":"neg");
   document.getElementById("attKpiGrid").innerHTML = kpis;
 
   var rows = "";
@@ -718,9 +721,10 @@ function buildPrintArea(){
   html += "<tr><td>FY Attendance %</td><td>" + fy.attendancePercent + "%</td></tr>";
   html += "<tr><td>FY Hours Worked / Required</td><td>" + fmtHrs(fy.totalHrs) + " / " + fy.requiredHrs + "</td></tr>";
   html += "<tr><td>Overall Excess/Deficit Hrs</td><td>" + signedHrs(fy.excessHrs) + "</td></tr>";
+  html += "<tr><td>Overall Grace-Adj. Excess/Deficit</td><td>" + signedHrs(fy.graceAdjustedExcessHrs) + "</td></tr>";
   html += "<tr><td>Mandate Items On Track</td><td>" + k.mandateOnTrack + " / " + k.totalMandates + "</td></tr>";
   var printPeriodCount = new Set((d.tasksLog||[]).map(function(t){ return t.sourceReport; })).size;
-  html += "<tr><td>Tasks Logged (" + printPeriodCount + " periods, Mar 2 - Jul 11 2026)</td><td>" + k.totalTasksLogged + "</td></tr>";
+  html += "<tr><td>Tasks Logged (" + printPeriodCount + " periods, Mar 2 - Jul 18 2026)</td><td>" + k.totalTasksLogged + "</td></tr>";
   html += "<tr><td>Weekly Reports Filed</td><td>" + k.reportsFiled + "</td></tr>";
   html += "<tr><td>Unique Report/Data Links</td><td>" + (k.reportLinks || 0) + "</td></tr>";
   html += "<tr><td>GitHub Repositories</td><td>" + k.totalRepos + "</td></tr></table>";
@@ -736,10 +740,10 @@ function buildPrintArea(){
   html += "</table>";
 
   html += "<h2>FY Attendance Summary</h2><table border=1 cellpadding=6 style='width:100%;border-collapse:collapse;margin-bottom:24px;'>";
-  html += "<tr><th>Month</th><th>Present</th><th>Absent</th><th>Leave</th><th>Holidays</th><th>Hrs Worked</th><th>Required</th><th>Excess/Deficit</th></tr>";
+  html += "<tr><th>Month</th><th>Present</th><th>Absent</th><th>Leave</th><th>Holidays</th><th>Hrs Worked</th><th>Required</th><th>Excess/Deficit</th><th>Grace-Adj.</th></tr>";
   MONTH_ORDER.forEach(function(m){
     var s = d.attendance[m].summary;
-    html += "<tr><td>"+m+"</td><td>"+s.present+"</td><td>"+s.absent+"</td><td>"+s.leaves+"</td><td>"+s.holidays+"</td><td>"+fmtHrs(s.totalHrs)+"</td><td>"+s.requiredHrs+"</td><td>"+fmtHrs(s.excessHrs)+"</td></tr>";
+    html += "<tr><td>"+m+"</td><td>"+s.present+"</td><td>"+s.absent+"</td><td>"+s.leaves+"</td><td>"+s.holidays+"</td><td>"+fmtHrs(s.totalHrs)+"</td><td>"+s.requiredHrs+"</td><td>"+fmtHrs(s.excessHrs)+"</td><td>"+fmtHrs(s.graceAdjustedExcessHrs)+"</td></tr>";
   });
   html += "</table>";
 
