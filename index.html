@@ -64,6 +64,24 @@ body{
 #loginError{color:#ff8a80;font-size:12.5px;margin-top:12px;min-height:16px;}
 .login-footer{margin-top:24px;font-size:11px;color:var(--text-muted);}
 
+/* ---------- Lab Carousel (shared by login backdrop + dashboard hero) ---------- */
+.lab-carousel{position:relative;overflow:hidden;}
+.lab-carousel .slide{position:absolute;inset:0;opacity:0;transition:opacity 1.8s ease;}
+.lab-carousel .slide.active{opacity:1;}
+.lab-carousel .slide img{width:100%;height:100%;object-fit:cover;display:block;}
+.lab-carousel .scrim{position:absolute;inset:0;pointer-events:none;}
+
+#loginBg{position:fixed;inset:0;z-index:0;}
+#loginBg .scrim{background:radial-gradient(circle at 15% 0%,rgba(10,21,48,.55) 0%,rgba(10,21,48,.82) 45%,rgba(6,12,30,.94) 100%);}
+#loginScreen{position:relative;z-index:1;}
+
+.dash-hero{height:220px;border-radius:var(--radius);margin-bottom:22px;border:1px solid var(--glass-brd);}
+.dash-hero .scrim{background:linear-gradient(100deg,rgba(10,21,48,.9) 0%,rgba(10,21,48,.5) 55%,rgba(10,21,48,.12) 100%);}
+.dash-hero .hero-caption{position:absolute;left:26px;bottom:20px;z-index:2;max-width:60%;}
+.dash-hero .hero-caption h3{font-size:20px;font-weight:800;color:var(--text);}
+.dash-hero .hero-caption p{font-size:12.5px;color:var(--text-dim);margin-top:4px;}
+@media (max-width:640px){.dash-hero{height:160px;} .dash-hero .hero-caption{max-width:80%;} .dash-hero .hero-caption h3{font-size:16px;}}
+
 /* ---------- App shell ---------- */
 #app{display:none;min-height:100vh;grid-template-columns:240px 1fr;}
 #app.show{display:grid;}
@@ -230,6 +248,14 @@ body{padding-bottom:34px;}
 </head>
 <body>
 
+<div id="loginBg" class="lab-carousel">
+  <div class="slide active"><img src="assets/ee-lab-utilization-hero-v2.jpg" alt="" loading="eager"></div>
+  <div class="slide"><img src="assets/ee-lab-utilization-insights-v2.jpg" alt="" loading="lazy"></div>
+  <div class="slide"><img src="assets/capacity-signal-card-v1.jpg" alt="" loading="lazy"></div>
+  <div class="slide"><img src="assets/instrument-focus-card-v1.jpg" alt="" loading="lazy"></div>
+  <div class="scrim"></div>
+</div>
+
 <div id="loginScreen">
   <div class="login-card">
     <div class="brand-badge">EE</div>
@@ -266,6 +292,18 @@ body{padding-bottom:34px;}
   <div class="main">
     <!-- Dashboard -->
     <div class="panel active" id="panel-dashboard">
+      <div class="dash-hero lab-carousel" id="dashHero">
+        <div class="slide active"><img src="assets/ee-lab-utilization-hero-v2.jpg" alt="" loading="eager"></div>
+        <div class="slide"><img src="assets/ee-lab-utilization-insights-v2.jpg" alt="" loading="lazy"></div>
+        <div class="slide"><img src="assets/capacity-signal-card-v1.jpg" alt="" loading="lazy"></div>
+        <div class="slide"><img src="assets/instrument-focus-card-v1.jpg" alt="" loading="lazy"></div>
+        <div class="scrim"></div>
+        <div class="hero-caption">
+          <div class="eyebrow" style="color:var(--accent-2);">Electronics Enabling Lab</div>
+          <h3>CTIE &middot; KLE Technological University</h3>
+          <p>Instrumentation, prototyping and startup support &mdash; tracked end to end in this portal.</p>
+        </div>
+      </div>
       <div class="topbar">
         <div>
           <h2 id="dashTitle">Portal Dashboard</h2>
@@ -390,7 +428,7 @@ body{padding-bottom:34px;}
 <div class="app-footer">Made with <span class="heart">&#10084;</span> ~rhc &middot; EE Lab, KLE-CTIE &middot; Last updated <span id="footerUpdated">&mdash;</span></div>
 
 <script>
-var GAS_URL = "https://script.google.com/macros/s/AKfycbwbya_OU4-l6ePlHGN62CA77iPULgWyPNkJWF4uJML_x1nVoaYHoTZhomUWPDKTPiJRhA/exec";
+var GAS_URL = "";
 var STATE = { data: null, currentMonth: "Jun-26" };
 var MONTH_ORDER = ["Oct-25","Nov-25","Dec-25","Jan-26","Feb-26","Mar-26","Apr-26","May-26","Jun-26"];
 
@@ -436,6 +474,21 @@ async function callApi(action, extra){
 
 document.getElementById("loginBtn").addEventListener("click", doLogin);
 document.getElementById("pwInput").addEventListener("keydown", function(e){ if (e.key === "Enter") doLogin(); });
+
+function initCarousel(containerId, intervalMs){
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  var slides = el.querySelectorAll(".slide");
+  if (slides.length < 2) return;
+  var idx = 0;
+  setInterval(function(){
+    slides[idx].classList.remove("active");
+    idx = (idx + 1) % slides.length;
+    slides[idx].classList.add("active");
+  }, intervalMs);
+}
+initCarousel("loginBg", 6000);
+initCarousel("dashHero", 7000);
 
 async function doLogin(){
   var pw = document.getElementById("pwInput").value;
