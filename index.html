@@ -135,6 +135,7 @@ tbody tr:last-child td{border-bottom:none;}
 .link-btn{color:var(--accent-2);text-decoration:none;font-weight:600;font-size:12.5px;}
 .link-btn:hover{text-decoration:underline;}
 .cat-chip{display:inline-block;padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700;background:rgba(255,255,255,.08);color:var(--text-dim);}
+.link-source{max-width:280px;white-space:normal;}
 
 /* ---------- Work breakup / GitHub cards ---------- */
 .wb-row td:nth-child(3){max-width:420px;}
@@ -354,11 +355,19 @@ body{padding-bottom:34px;}
     <div class="panel" id="panel-reports">
       <div class="topbar">
         <div><h2>Weekly Progress Reports</h2><div class="sub" id="wrSub">Filed via Google Drive</div></div>
+        <button class="btn" id="installTriggerBtn">&#9201; Enable Auto-Scan (4h)</button>
       </div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>ID</th><th>Title</th><th>Week Range</th><th>Date Filed</th><th>PDF</th><th>DOCX</th><th>Status</th></tr></thead>
           <tbody id="wrTableBody"></tbody>
+        </table>
+      </div>
+      <div class="section-title" style="margin-top:22px;"><span class="bar"></span>Unique Links Pulled From Reports &amp; Data</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Type</th><th>Source</th><th>Unique Link</th></tr></thead>
+          <tbody id="reportLinksTableBody"></tbody>
         </table>
       </div>
     </div>
@@ -381,7 +390,7 @@ body{padding-bottom:34px;}
 <div class="app-footer">Made with <span class="heart">&#10084;</span> ~rhc &middot; EE Lab, KLE-CTIE &middot; Last updated <span id="footerUpdated">&mdash;</span></div>
 
 <script>
-var GAS_URL = "https://script.google.com/macros/s/AKfycbwbya_OU4-l6ePlHGN62CA77iPULgWyPNkJWF4uJML_x1nVoaYHoTZhomUWPDKTPiJRhA/exec";
+var GAS_URL = "";
 var STATE = { data: null, currentMonth: "Jun-26" };
 var MONTH_ORDER = ["Oct-25","Nov-25","Dec-25","Jan-26","Feb-26","Mar-26","Apr-26","May-26","Jun-26"];
 
@@ -389,6 +398,13 @@ function badgeClass(status){ return "badge-" + String(status).replace(/\s+/g,"")
 function fmtHrs(v){ return (v===null||v===undefined||v==="") ? "&mdash;" : Number(v).toFixed(2); }
 function signedHrs(v){ return (v===null||v===undefined||v==="") ? "&mdash;" : ((Number(v)>=0?"+":"") + Number(v).toFixed(2)); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+function portalDateTime(){
+  var d = new Date(), months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var h = d.getHours(), suffix = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return String(d.getDate()).padStart(2,"0") + "-" + months[d.getMonth()] + "-" + d.getFullYear() + " " +
+    String(h).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0") + " " + suffix;
+}
 
 function showToast(message, type){
   type = type || "info";
@@ -493,10 +509,12 @@ function renderKpis(d){
   var html = "";
   html += kpiCard("Attendance % (" + (k.currentMonth||"") + ")", (k.attendancePercent||0) + "<small>%</small>", "accent", "attendance");
   html += kpiCard("Excess/Deficit Hrs (Month)", signedHrs(k.excessHours), k.excessHours>=0?"pos":"neg", "attendance");
+  html += kpiCard("Overall Excess/Deficit Hrs", signedHrs(fy.excessHrs), fy.excessHrs>=0?"pos":"neg", "attendance");
   html += kpiCard("Mandate Items On Track", (k.mandateOnTrack||0) + "<small>/" + (k.totalMandates||0) + "</small>", "", "workbreakup");
   var periodCount = new Set((d.tasksLog||[]).map(function(t){ return t.sourceReport; })).size;
   html += kpiCard("Tasks Logged (" + periodCount + " periods)", k.totalTasksLogged||0, "", "tasks");
   html += kpiCard("Reports Filed", k.reportsFiled||0, "", "reports");
+  html += kpiCard("Unique Report/Data Links", k.reportLinks||0, "", "reports");
   html += kpiCard("Portals & Systems Delivered", k.totalRepos||0, "", "github");
   html += kpiCard("Active Categories", k.activeCategories||0, "", "github");
   html += kpiCard("Mandate Items Needing Attention", k.mandateNeedsAttention||0, k.mandateNeedsAttention>0?"neg":"pos", "workbreakup");
@@ -609,6 +627,8 @@ function renderAttendance(d){
   kpis += kpiCard("Weekly Offs", s.weeklyOffs);
   kpis += kpiCard("Hours Worked", fmtHrs(s.totalHrs));
   kpis += kpiCard("Excess/Deficit", signedHrs(s.excessHrs), s.excessHrs>=0?"pos":"neg");
+  var fy = d.fySummary || {};
+  kpis += kpiCard("Overall Excess/Deficit", signedHrs(fy.excessHrs), fy.excessHrs>=0?"pos":"neg");
   document.getElementById("attKpiGrid").innerHTML = kpis;
 
   var rows = "";
@@ -649,7 +669,8 @@ function renderGithub(d){
 
 function renderReports(d){
   var reports = d.weeklyReports || [];
-  document.getElementById("wrSub").textContent = reports.length + " weekly reports filed";
+  var uniqueLinks = d.uniqueLinks || [];
+  document.getElementById("wrSub").textContent = reports.length + " weekly reports filed · " + uniqueLinks.length + " unique links indexed";
   var rows = "";
   reports.forEach(function(r){
     var isLocal = /local/i.test(r.status);
@@ -659,12 +680,25 @@ function renderReports(d){
       '</td><td><span class="badge ' + (isLocal ? "badge-Pending" : "badge-Present") + '">' + esc(r.status) + "</span></td></tr>";
   });
   document.getElementById("wrTableBody").innerHTML = rows;
+
+  var linkRows = "";
+  uniqueLinks.forEach(function(l){
+    linkRows += '<tr><td><span class="cat-chip">' + esc(l.category) + '</span></td><td class="link-source">' + esc(l.label) +
+      '</td><td><a class="link-btn" href="' + esc(l.url) + '" target="_blank">' + esc(l.url) + '</a></td></tr>';
+  });
+  document.getElementById("reportLinksTableBody").innerHTML = linkRows || '<tr><td colspan="3">No links found yet.</td></tr>';
 }
 
 document.getElementById("rescanBtn").addEventListener("click", async function(){
   var res = await callApi("scanDriveFolder");
-  if (res.ok) { showToast("Drive scan complete: " + res.count + " new report(s) added, " + (res.updated||0) + " local-only report(s) linked to Drive.", "success"); loadPortalData(); }
+  if (res.ok) { showToast("Drive scan complete: " + res.count + " new report(s) added, " + (res.updated||0) + " local-only report(s) linked to Drive, " + (res.linksIndexed||0) + " unique links indexed.", "success"); loadPortalData(); }
   else showToast(res.error || "Scan failed (requires live GAS deployment).", "error");
+});
+
+document.getElementById("installTriggerBtn").addEventListener("click", async function(){
+  var res = await callApi("installTriggers");
+  if (res.ok) showToast(res.message || "Automatic Drive scan enabled.", "success");
+  else showToast(res.error || "Could not enable auto-scan (requires live GAS deployment).", "error");
 });
 
 document.getElementById("printBtn").addEventListener("click", function(){
@@ -677,16 +711,18 @@ function buildPrintArea(){
   var c = d.config, fy = d.fySummary, k = d.kpis;
   var html = '<div class="print-cover"><h1>' + esc(c.heroTitle) + " " + esc(c.heroEmphasis) + '</h1><p>' + esc(c.portalSub) + '</p>' +
     "<p>" + esc(c.employeeName) + " (" + esc(c.employeeCode) + ") &middot; " + esc(c.department) + " &middot; " + esc(c.designation) + "</p>" +
-    "<p>Financial Year " + esc(c.academicYear) + "</p><p>Generated: " + new Date().toLocaleString("en-IN") + "</p></div>";
+    "<p>Financial Year " + esc(c.academicYear) + "</p><p>Generated: " + portalDateTime() + "</p></div>";
 
   html += "<h2>Dashboard Summary</h2><table border=1 cellpadding=6 style='width:100%;border-collapse:collapse;margin-bottom:24px;'>";
   html += "<tr><td>Attendance % (Current Month)</td><td>" + k.attendancePercent + "%</td></tr>";
   html += "<tr><td>FY Attendance %</td><td>" + fy.attendancePercent + "%</td></tr>";
   html += "<tr><td>FY Hours Worked / Required</td><td>" + fmtHrs(fy.totalHrs) + " / " + fy.requiredHrs + "</td></tr>";
+  html += "<tr><td>Overall Excess/Deficit Hrs</td><td>" + signedHrs(fy.excessHrs) + "</td></tr>";
   html += "<tr><td>Mandate Items On Track</td><td>" + k.mandateOnTrack + " / " + k.totalMandates + "</td></tr>";
   var printPeriodCount = new Set((d.tasksLog||[]).map(function(t){ return t.sourceReport; })).size;
   html += "<tr><td>Tasks Logged (" + printPeriodCount + " periods, Mar 2 - Jul 11 2026)</td><td>" + k.totalTasksLogged + "</td></tr>";
   html += "<tr><td>Weekly Reports Filed</td><td>" + k.reportsFiled + "</td></tr>";
+  html += "<tr><td>Unique Report/Data Links</td><td>" + (k.reportLinks || 0) + "</td></tr>";
   html += "<tr><td>GitHub Repositories</td><td>" + k.totalRepos + "</td></tr></table>";
 
   html += "<h2>Work Breakup &mdash; Mandate Coverage</h2><table border=1 cellpadding=6 style='width:100%;border-collapse:collapse;margin-bottom:24px;'>";
