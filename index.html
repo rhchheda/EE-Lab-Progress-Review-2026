@@ -499,6 +499,7 @@ async function doLogin(){
     sessionStorage.setItem("eelPw", pw);
     errEl.textContent = "";
     document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("loginBg").style.display = "none";
     document.getElementById("app").classList.add("show");
     loadPortalData();
   } else {
@@ -510,6 +511,7 @@ document.getElementById("logoutBtn").addEventListener("click", function(){
   sessionStorage.removeItem("eelPw");
   document.getElementById("app").classList.remove("show");
   document.getElementById("loginScreen").style.display = "flex";
+  document.getElementById("loginBg").style.display = "";
   document.getElementById("pwInput").value = "";
 });
 
@@ -598,7 +600,7 @@ function renderDeliverables(d){
   var rows = "";
   (d.githubRepos||[]).forEach(function(r){
     rows += "<tr><td>" + r.slNo + "</td><td><b>" + esc(r.repository) + '</b></td><td><span class="cat-chip">' + esc(r.category) +
-      '</span></td><td><a class="link-btn" href="' + esc(r.url) + '" target="_blank">' + esc(r.url) + "</a></td></tr>";
+      '</span></td><td><a class="link-btn" href="' + esc(r.url) + '" target="_blank">' + esc(r.repository) + "</a></td></tr>";
   });
   document.getElementById("deliverablesTableBody").innerHTML = rows;
 }
